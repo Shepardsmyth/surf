@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Jumping Ball Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #87CEEB;
+        }
+        #gameCanvas {
+            border: 3px solid #4682B4;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+       
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const ball = {
+            x: 50,
+            y: 350,
+            radius: 20,
+            dy: 0,
+            jumpStrength: -15,
+            gravity: 0.8,
+            color: '#FF6347'
+        };
+
+        let obstacles = [];
+        let clouds = [];
+        let powerUps = [];
+        let isGameOver = false;
+        let score = 0;
+        let gameSpeed = 1;
+        let lastObstacleTime = 0;
+        let jumpCount = 0;
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color;
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                ctx.fillStyle = '#228B22';
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+        }
+
+        function drawClouds() {
+            ctx.fillStyle = '#FFF';
+            clouds.forEach(cloud => {
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, 20, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 15, cloud.y - 10, 15, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 30, cloud.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawPowerUps() {
+            powerUps.forEach(powerUp => {
+                ctx.beginPath();
+                ctx.arc(powerUp.x, powerUp.y, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFD700';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+
+        function drawGround() {
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 370, 800, 30);
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, 370, 800, 5);
+        }
+
+        function jump() {
+            if (jumpCount < 2) {
+                ball.dy = ball.jumpStrength;
+                jumpCount++;
+            }
+        }
+
+        function checkCollision() {
+            obstacles.forEach(obstacle => {
+                if (
+                    ball.x + ball.radius > obstacle.x &&
+                    ball.x - ball.radius < obstacle.x + obstacle.width &&
+                    ball.y + ball.radius > obstacle.y
+                ) {
+                    isGameOver = true;
+                }
+                // Score increment when passing an obstacle
+                if (ball.x > obstacle.x + obstacle.width && !obstacle.passed) {
+                    score++;
+                    obstacle.passed = true;
+                }
+            });
+
+            powerUps = powerUps.filter(powerUp => {
+                if (
+                    ball.x + ball.radius > powerUp.x - 10 &&
+                    ball.x - ball.radius < powerUp.x + 10 &&
+                    ball.y + ball.radius > powerUp.y - 10 &&
+                    ball.y - ball.radius < powerUp.y + 10
+                ) {
+                    score += 5;
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        function resetGame() {
+            ball.y = 350;
+            ball.dy = 0;
+            obstacles = [];
+            clouds = [];
+            powerUps = [];
+            isGameOver = false;
+            score = 0;
+            gameSpeed = 1;
+            lastObstacleTime = 0;
+            jumpCount = 0;
+        }
+
+        function createObstacle() {
+            obstacles.push({
+                x: 800,
+                y: 330 - Math.random() * 60,
+                width: 30 + Math.random() * 30,
+                height: 40 + Math.random() * 60,
+                speed: 5 * gameSpeed,
+                passed: false
+            });
+        }
+
+        function createCloud() {
+            clouds.push({
+                x: 800,
+                y: 50 + Math.random() * 100,
+                speed: (1 + Math.random()) * gameSpeed
+            });
+        }
+
+        function createPowerUp() {
+            powerUps.push({
+                x: 800,
+                y: 100 + Math.random() * 200,
+                speed: 3 * gameSpeed
+            });
+        }
+
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (isGameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = 'bold 48px Arial';
+                ctx.fillStyle = '#FFF';
+                ctx.fillText('Game Over!', 280, 180);
+                ctx.font = '24px Arial';
+                ctx.fillText(`Score: ${score}`, 350, 220);
+                ctx.fillText('Press R to restart', 310, 260);
+                return;
+            }
+
+            ball.dy += ball.gravity;
+            ball.y += ball.dy;
+
+            if (ball.y + ball.radius > 370) {
+                ball.y = 370 - ball.radius;
+                ball.dy = 0;
+                jumpCount = 0;
+            }
+
+            if (Date.now() - lastObstacleTime > (1000 + Math.random() * 3000) / gameSpeed) {
+                createObstacle();
+                lastObstacleTime = Date.now();
+            }
+
+            if (Math.random() < 0.02) createCloud();
+            if (Math.random() < 0.005) createPowerUp();
+
+            obstacles = obstacles.filter(obstacle => {
+                obstacle.x -= obstacle.speed;
+                return obstacle.x + obstacle.width > 0;
+            });
+
+            clouds = clouds.filter(cloud => {
+                cloud.x -= cloud.speed;
+                return cloud.x > -50;
+            });
+
+            powerUps = powerUps.filter(powerUp => {
+                powerUp.x -= powerUp.speed;
+                return powerUp.x > -20;
+            });
+
+            gameSpeed += 0.0005;
+
+            drawClouds();
+            drawGround();
+            drawObstacles();
+            drawPowerUps();
+            drawBall();
+            checkCollision();
+
+            ctx.font = 'bold 24px Arial';
+            ctx.fillStyle = '#000';
+            ctx.fillText(`Score: ${Math.floor(score)}`, 20, 40);
+            ctx.fillText(`Speed: ${gameSpeed.toFixed(2)}x`, 20, 70);
+
+            requestAnimationFrame(updateGame);
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space') {
+                jump();
+                event.preventDefault();
+            }
+            if (event.code === 'KeyR' && isGameOver) {
+                resetGame();
+                updateGame();
+            }
+        });
+
+        updateGame();
+        
+    </script>
+<footer>
+    <div>
+        <a href="../index.html">Return to Surf Shop</a>
+    </div>
+</footer>
+    
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
